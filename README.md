@@ -1,21 +1,3 @@
 # EChat
 
-**TODO: Add description**
-
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `e_chat` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:e_chat, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/e_chat>.
-
+A simple chat built with elixir. It is fronted with a cowboy http server. This purpose of this application is to build an application without the Pheonix framework before I start learning about that technology.
