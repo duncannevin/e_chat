@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en" class="h-screen">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="shortcut icon" href="/static/favicon.ico" />
+  <link
+  href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,900&display=swap"
+  rel="stylesheet" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/tw-elements/dist/css/index.min.css" />
+  <script src="https://cdn.tailwindcss.com/3.2.4"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        fontFamily: {
+          sans: ["Roboto", "sans-serif"],
+          body: ["Roboto", "sans-serif"],
+          mono: ["ui-monospace", "monospace"],
+        },
+      },
+      corePlugins: {
+        preflight: false,
+      },
+    };
+  </script>
+  <title>EChat</title>
+</head>
+<body class="bg-gray-100 h-full">
+  <main class="h-full">
+    <!-- Sidenav -->
+    <nav
+    id="sidenav-1"
+    class="absolute top-0 left-0 z-[1035] h-full w-60 -translate-x-full overflow-hidden bg-white shadow-[0_4px_12px_0_rgba(0,0,0,0.07),_0_2px_4px_rgba(0,0,0,0.05)] data-[te-sidenav-hidden='false']:translate-x-0 dark:bg-zinc-800"
+    data-te-sidenav-hidden="false"
+    data-te-sidenav-position="absolute">
+
+    <div class="w-full h-full relative flex flex-col">
+      <div class="h-full p-4 pb-0 overflow-auto">
+        <ul
+          id="room-list"
+          class="relative m-0 list-none px-[0.2rem] min-h-full">
+          <!-- Room list renders here -->
+        </ul>
+      </div>
+
+      <div class="flex h-20 w-full justify-center p-4">
+        <input
+          type="text"
+          class="peer block min-h-[auto] focus:outline-none border-2 w-full rounded bg-transparent py-[0.32rem] px-3 leading-[1.6] transition-all duration-200 ease-linear"
+          id="room-input"
+          disabled
+          placeholder="Thunder Room" />
+      </div>
+    </div>
+  </nav>
+
+  <!-- Floating User Input -->
+  <div class="fixed top-2 right-2 z-50">
+    <input
+      type="text"
+      class="peer block min-h-[auto] focus:outline-none border-2 w-full rounded bg-transparent py-[0.32rem] px-3 leading-[1.6] transition-all duration-200 ease-linear"
+      id="user-input"
+      placeholder="Teddy Bear" />
+  </div>
+
+  <!-- Content -->
+  <div class="flex h-full relative">
+    <div class="w-full h-full pl-[230px] flex flex-col">
+
+      <!-- Chat message area -->
+      <div class="h-full w-full overflow-auto">
+        <div id="message-box" class="flex grow w-full p-4 pl-10 pb-0 flex-col justify-end min-h-full">
+          <!-- populate the messages here. -->
+        </div>
+      </div>
+
+      <!-- Chat input area -->
+      <div class="flex h-20 w-full justify-center p-4 pl-8">
+        <input
+          type="text"
+          class="peer block min-h-[auto] focus:outline-none border-2 w-full rounded bg-transparent py-[0.32rem] px-3 leading-[1.6] transition-all duration-200 ease-linear"
+          id="message-input"
+          disabled
+          placeholder="Hey Chester, what's up?" />
+      </div>
+
+    </div>
+  </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/index.min.js"></script>
+  <script>
+    let user = null;
+
+    (function(document) {
+      initializeUser();
+
+      initializeMessages([
+        {
+          username: "duncannevin",
+          time: "2023-10-10 13:00",
+          message: "This is message 1"
+        },
+        {
+          username: "testerchester",
+          time: "2023-10-10 13:00",
+          message: "This is message 2"
+        },
+        {
+          username: "sammy",
+          time: "2023-10-10 13:00",
+          message: "This is message 3"
+        },
+        {
+          username: "duncannevin",
+          time: "2023-10-10 13:00",
+          message: "This is message 4"
+        }
+      ]);
+
+      initializeRooms();
+
+      startListening(document);
+    })(document)
+
+    function startListening(document) {
+      // Message input listener.
+      const messageInput = document.getElementById('message-input');
+      messageInput.addEventListener('keyup', (evt) => evt.keyCode === 13 ? handleMessage(evt) : null);
+
+      // Room input listener.
+      const roomInput = document.getElementById('room-input');
+      roomInput.addEventListener('keyup', (evt) => evt.keyCode === 13 ? handleRoom(evt) : null);
+
+      // User input listener.
+      const userInput = document.getElementById('user-input')
+      userInput.addEventListener('keyup', (evt) => evt.keyCode === 13 ? handleUser(evt) : null)
+    }
+
+    function initializeUser() {
+      const maybeUser = localStorage.getItem('user');
+
+      if (maybeUser !== 'null') {
+        user = JSON.parse(maybeUser);
+        const userInput = document.getElementById('user-input');
+        userInput.value = user.username;
+
+        enableMessageInput();
+        enableRoomInput();
+        disableUserInput();
+      } else {
+        localStorage.removeItem('user');
+      }
+    }
+
+    function handleSideNavOpen(document) {
+      const mainSideNav = document.getElementById('main-sidenav');
+      const instance = te.Sidenav.getInstance(mainSideNav);
+      instance.toggleSlim();
+    }
+
+    async function handleUser(evt) {
+      const username = evt.target.value;
+
+      if (!username.length) {
+        return;
+      }
+
+      let body = await doPost({path: `/api/user`, body: {username}});
+      console.log(body);
+
+      if (body.msg.toLowerCase() === 'duplicate') {
+        body = await doGet({path: `/api/user/${body.username}`});
+      }
+
+      if (body.user) {
+        localStorage.setItem('user', JSON.stringify(body.user));
+        enableMessageInput();
+        enableRoomInput();
+        disableUserInput();
+      }
+    }
+
+    function handleMessage(evt) {
+      const message = evt.target.value;
+
+      if (!message.length) {
+        return;
+      }
+
+      // TODO: Replace this with api call.
+      // This push message logic here will end up being handled directly with a websocket.
+      const time = new Date().toDateString();
+
+      pushMessage({
+        username: user.username,
+        time: time,
+        message: message 
+      });
+
+      evt.srcElement.value = '';
+    }
+
+    async function doGet({path, headers = {}, loc = 'http://localhost:8080'}) {
+      const response = await fetch(
+        `${loc}${path}`, 
+        {
+          method: 'get', 
+          headers: {
+            ...headers,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        })
+
+      return response.json();
+    }
+
+    async function handleRoom(evt) {
+      const roomname = evt.target.value;
+
+      if (!roomname.length || !user.username) {
+        return;
+      }
+
+      try {
+        const {msg} = await doPost({path: '/api/room', body: {roomname, username: user.username}})
+
+        if (msg.toLowerCase() === 'created') {
+          pushRoom({
+            name: roomname
+          });
+        }
+
+        evt.srcElement.value = '';
+
+      } catch {}
+    }
+
+    async function doPost({path, body, headers = {}, loc = 'http://localhost:8080'}) {
+      const response =  await fetch(
+        `${loc}${path}`, 
+        {
+          method: "post",
+          headers: {
+            ...headers,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        }
+      );
+
+      return response.json();
+    }
+
+    function enableRoomInput() {
+      const roomInput = document.getElementById('room-input');
+
+      roomInput.removeAttribute('disabled');
+    }
+
+    function enableMessageInput() {
+      const messageInput = document.getElementById('message-input');
+
+      messageInput.removeAttribute('disabled');
+    }
+
+    function disableUserInput() {
+      const messageInput = document.getElementById('user-input');
+
+      messageInput.setAttribute('disabled', 'true');
+    }
+
+    async function initializeRooms() {
+      const res = await fetch('http://localhost:8080/api/room');
+      const {rooms} = await res.json();
+
+      for (const room of rooms) {
+        pushRoom({name: room});
+      }
+    }
+
+    function initializeMessages(messages) {
+      for (const message of messages) {
+        pushMessage(message);
+      }
+    }
+
+    function pushMessage(message) {
+      // TODO: send this message to the server, let the server update the message via ws.
+
+      const messageBox = document.getElementById('message-box');
+      const messageTemplate = createMessageTemplate(message);
+
+      messageBox.innerHTML += messageTemplate;
+
+      const messageBoxContainer = messageBox.parentNode;
+      messageBoxContainer.scrollTop = messageBoxContainer.scrollHeight + 300;
+    }
+
+    function pushRoom(room) {
+      // TODO: send this room to the server, let the server update the message via ws.
+
+      const roomList = document.getElementById('room-list');
+      const roomTemplate = createRoomTemplate(room);
+
+      roomList.innerHTML += roomTemplate;
+
+      const roomListContainer = roomList.parentNode;
+      roomListContainer.scrollTop = roomListContainer.scrollHeight + 300;
+    }
+
+    function createRoomTemplate(room) {
+      return `
+        <li class="relative">
+          <a
+            class="flex h-12 cursor-pointer items-center truncate rounded-[5px] py-4 px-6 pl-0 text-[0.875rem] text-gray-600 outline-none transition duration-300 ease-linear hover:bg-slate-50 hover:text-inherit hover:outline-none focus:bg-slate-50 focus:text-inherit focus:outline-none active:bg-slate-50 active:text-inherit active:outline-none data-[te-sidenav-state-active]:text-inherit data-[te-sidenav-state-focus]:outline-none motion-reduce:transition-none dark:text-gray-300 dark:hover:bg-white/10 dark:focus:bg-white/10 dark:active:bg-white/10"
+            data-te-sidenav-link-ref>
+            ${room.name}
+          </a>
+        </li>
+      `;
+    }
+
+    function createMessageTemplate(message) {
+      return `
+        <div class="pt-2">
+          <div class="font-semibold">${message.username} <span class="font-light text-xs">${message.time}</span></div>  
+          <p>${message.message}</p>
+        </div>
+      `;
+    }
+
+  </script>
+</body>
+</html>
