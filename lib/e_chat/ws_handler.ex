@@ -15,9 +15,10 @@ defmodule EChat.WsHandler do
   end
 
   def websocket_init(%State{server: :room, name: name} = state) do
-    RoomServer.register_socket(name, self())
-
-    {:ok, state}
+    case RoomServer.register_socket(name, self()) do
+      {:error, _} -> {:error, :not_found}
+      _ -> {:ok, state}
+    end
   end
 
   def websocket_handle(_handle, state) do
@@ -42,6 +43,6 @@ defmodule EChat.WsHandler do
     [_, _ws, server, name] = path
     |> String.split("/")
 
-    {String.to_atom(server), String.to_atom(name)}
+    {String.to_atom(server), name |> URI.decode |> String.to_atom}
   end
 end

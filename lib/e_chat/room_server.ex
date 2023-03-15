@@ -31,6 +31,12 @@ defmodule EChat.RoomServer do
     end
   end
 
+  def set_message(roomname, %Message{} = message) when is_binary(roomname) do
+    roomname
+    |> String.to_atom
+    |> set_message(message)
+  end
+
   def set_message(roomname, %Message{} = message) do
     case whereis roomname do
       nil -> {:error, :not_found}
@@ -38,11 +44,23 @@ defmodule EChat.RoomServer do
     end
   end
 
+  def register_socket(roomname, socket_pid) when is_binary(roomname) do
+    roomname
+    |> String.to_atom
+    |> register_socket(socket_pid)
+  end
+
   def register_socket(roomname, socket_pid) do
     case whereis roomname do
       nil -> {:error, :not_found}
       pid -> GenServer.cast(pid, {:register_socket, socket_pid})
     end
+  end
+
+  def update_sockets(roomname) when is_binary(roomname) do
+    roomname
+    |> String.to_atom
+    |> update_sockets
   end
 
   def update_sockets(roomname) do
@@ -65,16 +83,21 @@ defmodule EChat.RoomServer do
   end
 
   def handle_cast({:register_socket, socket_pid}, %State{socket_pids: socket_pids} = state) do
+    IO.puts "Registering a socket #{inspect socket_pid}"
     new_state = %State{state | socket_pids: [socket_pid | socket_pids]}
     {:noreply, new_state}
   end
 
   def handle_cast({:update_sockets}, %State{room: room, socket_pids: socket_pids} = state) do
-    for pid <- socket_pids do
+    IO.inspect socket_pids
+    new_state = %State{state | socket_pids: socket_pids}
+
+    for pid <- new_state.socket_pids do
+      IO.puts "Emitting updated room for room #{inspect room.name}"
       Process.send(pid, WsResponse.as_json("room", room), [])
     end
 
-    {:noreply, state}
+    {:noreply, new_state}
   end
 
   def init(%State{room: room} = state) do
