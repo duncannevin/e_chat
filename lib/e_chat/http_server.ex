@@ -27,7 +27,7 @@ defmodule EChat.HttpServer do
           {"/api/[...]", EChat.ApiHandler, []},
           # Pathmatch "/ws"
           # Handles ws requests.
-          {"/ws", EChat.WsHandler, []},
+          {"/ws/[...]", EChat.WsHandler, []},
           # Pathmatch "/[...]".
           # Serves the pages.
           {"/[...]", EChat.PageHandler, []},

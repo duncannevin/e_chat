@@ -10,6 +10,7 @@ defmodule EChat do
   """
   def start(_type, _arg) do
     IO.puts "Starting EChat...."
+
     EChat.HttpServer.start()
     EChat.Supervisor.start_link()
   end

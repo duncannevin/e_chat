@@ -97,28 +97,7 @@
     (function(document) {
       initializeUser();
 
-      initializeMessages([
-        {
-          username: "duncannevin",
-          time: "2023-10-10 13:00",
-          message: "This is message 1"
-        },
-        {
-          username: "testerchester",
-          time: "2023-10-10 13:00",
-          message: "This is message 2"
-        },
-        {
-          username: "sammy",
-          time: "2023-10-10 13:00",
-          message: "This is message 3"
-        },
-        {
-          username: "duncannevin",
-          time: "2023-10-10 13:00",
-          message: "This is message 4"
-        }
-      ]);
+      initializeMessages([]);
 
       initializeRooms();
 
@@ -139,20 +118,33 @@
       userInput.addEventListener('keyup', (evt) => evt.keyCode === 13 ? handleUser(evt) : null)
     }
 
-    function initializeUser() {
+    async function initializeUser() {
       const maybeUser = localStorage.getItem('user');
 
-      if (maybeUser !== 'null') {
-        user = JSON.parse(maybeUser);
-        const userInput = document.getElementById('user-input');
-        userInput.value = user.username;
-
-        enableMessageInput();
-        enableRoomInput();
-        disableUserInput();
-      } else {
-        localStorage.removeItem('user');
+      if (maybeUser === null) {
+        return;
       }
+
+      let storedUser = JSON.parse(maybeUser);
+
+      if (!storedUser.username) {
+        localStorage.removeItem('user');
+        return;
+      }
+
+      const body = await doGet({path: `/api/user/${storedUser.username}`});
+
+      if (!body.user) {
+        return;
+      }
+
+      user = body.user;
+      const userInput = document.getElementById('user-input');
+      userInput.value = user.username;
+
+      enableMessageInput();
+      enableRoomInput();
+      disableUserInput();
     }
 
     function handleSideNavOpen(document) {
@@ -169,13 +161,13 @@
       }
 
       let body = await doPost({path: `/api/user`, body: {username}});
-      console.log(body);
 
       if (body.msg.toLowerCase() === 'duplicate') {
         body = await doGet({path: `/api/user/${body.username}`});
       }
 
       if (body.user) {
+        user = body.user
         localStorage.setItem('user', JSON.stringify(body.user));
         enableMessageInput();
         enableRoomInput();
@@ -218,6 +210,42 @@
       return response.json();
     }
 
+    async function handleRoomSelected(selector) {
+      try {
+        const roomName = selector.innerText;
+        const room = await doGet({path: `/api/room/${roomName}`});
+
+        if (!room || !room.messages) {
+          return;
+        }
+
+        initializeMessages(room.messages);
+      
+        removeSelectedFromRoomSelectors();
+        selector.classList.add('border-2');
+        selector.classList.add('border-gray-800');
+        selector.classList.add('text-gray-800');
+      } catch {}
+    }
+
+    function removeSelectedFromRoomSelectors() {
+      const roomSelectors = document.querySelectorAll('.room-selector');
+
+      roomSelectors.forEach(function(selector) {
+      selector.classList.remove('border-2');
+        selector.classList.remove('border-gray-800');
+        selector.classList.remove('text-gray-800');
+      });
+    }
+
+    function handleRoomSelectorListeners() {
+      const roomSelectors = document.querySelectorAll('.room-selector');
+
+      roomSelectors.forEach(function(selector) {
+        selector.addEventListener('click', () => handleRoomSelected(selector));
+      })      
+    }
+
     async function handleRoom(evt) {
       const roomname = evt.target.value;
 
@@ -235,7 +263,7 @@
         }
 
         evt.srcElement.value = '';
-
+        handleRoomSelectorListeners();
       } catch {}
     }
 
@@ -281,12 +309,21 @@
       for (const room of rooms) {
         pushRoom({name: room});
       }
+
+      handleRoomSelectorListeners();
     }
 
     function initializeMessages(messages) {
+      clearMessages();
+
       for (const message of messages) {
         pushMessage(message);
       }
+    }
+
+    function clearMessages() {
+      const messageBox = document.getElementById('message-box');
+      messageBox.innerHTML = '';
     }
 
     function pushMessage(message) {
@@ -317,7 +354,7 @@
       return `
         <li class="relative">
           <a
-            class="flex h-12 cursor-pointer items-center truncate rounded-[5px] py-4 px-6 pl-0 text-[0.875rem] text-gray-600 outline-none transition duration-300 ease-linear hover:bg-slate-50 hover:text-inherit hover:outline-none focus:bg-slate-50 focus:text-inherit focus:outline-none active:bg-slate-50 active:text-inherit active:outline-none data-[te-sidenav-state-active]:text-inherit data-[te-sidenav-state-focus]:outline-none motion-reduce:transition-none dark:text-gray-300 dark:hover:bg-white/10 dark:focus:bg-white/10 dark:active:bg-white/10"
+            class="room-selector flex h-12 cursor-pointer items-center truncate rounded-[5px] py-4 px-6 pl-2 text-[0.875rem] text-gray-600 transition duration-300 ease-linear hover:bg-slate-50 hover:text-inherit hover:outline-none focus:bg-slate-50 focus:text-inherit focus:outline-none active:bg-slate-50 active:text-inherit active:outline-none data-[te-sidenav-state-active]:text-inherit data-[te-sidenav-state-focus]:outline-none motion-reduce:transition-none dark:text-gray-300 dark:hover:bg-white/10 dark:focus:bg-white/10 dark:active:bg-white/10"
             data-te-sidenav-link-ref>
             ${room.name}
           </a>

@@ -36,7 +36,7 @@ defmodule EChat.RoomSupervisor do
 
   defp handle_supervision_response({:ok, pid}), do: {:ok, pid}
   defp handle_supervision_response({:error, {:already_started, _}}), do: {:error, :already_started}
-  defp handle_supervision_response({:error, _}), do: {:error, :complicated}
+  defp handle_supervision_response({:error, error}), do: IO.inspect error; {:error, :complicated}
 
   def init(:ok) do
     DynamicSupervisor.init(strategy: :one_for_one)
