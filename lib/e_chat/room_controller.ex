@@ -2,8 +2,9 @@ defmodule EChat.RoomController do
 
   alias EChat.Struct.Response
   alias EChat.Struct.Room
+  alias EChat.RoomsServer
 
-  import EChat.RoomSupervisor, only: [start_work: 1, get_room_names: 0]
+  import EChat.RoomSupervisor, only: [start_work: 1]
   import EChat.RoomServer, only: [get_messages: 1]
 
   @doc """
@@ -32,7 +33,7 @@ defmodule EChat.RoomController do
   For getting a list of all the room names
   """
   def get_rooms(cowboy_request) do
-    get_room_names()
+    RoomsServer.get_roomnames()
     |> get_rooms_response(cowboy_request)
   end
 
@@ -52,6 +53,7 @@ defmodule EChat.RoomController do
   end
 
   defp post_room_response({:ok, _}, cowboy_request) do
+    RoomsServer.update_sockets()
     {:ok, Response.generate_json_response(%{msg: "Created"}, 201, cowboy_request), []}
   end
 

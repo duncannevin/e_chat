@@ -14,7 +14,8 @@ defmodule EChat.Supervisor do
 
   def init(:ok) do
     children = [
-      EChat.ServicesSupervisor
+      EChat.ServicesSupervisor,
+      EChat.RoomsServer
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

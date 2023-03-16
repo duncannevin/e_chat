@@ -1,6 +1,7 @@
 defmodule EChat.WsHandler do
   @behaviour :cowboy_websocket
 
+  alias EChat.RoomsServer
   alias EChat.RoomServer
 
   defmodule State do
@@ -21,6 +22,11 @@ defmodule EChat.WsHandler do
     end
   end
 
+  def websocket_init(%State{server: :rooms, name: nil} = state) do
+    RoomsServer.register_socket(self())
+    {:ok, state}
+  end
+
   def websocket_handle(_handle, state) do
     {:reply, {:text, "hello world"}, state}
   end
@@ -35,14 +41,15 @@ defmodule EChat.WsHandler do
   end
 
   def terminate(reason, _req, state) do
-    IO.puts "Terminating a socket for some #{reason}. #{inspect state}"
+    IO.puts "Terminating a socket for some #{inspect reason}. #{inspect state}"
     :ok
   end
 
   defp server_from_path(path) do
-    [_, _ws, server, name] = path
-    |> String.split("/")
-
-    {String.to_atom(server), name |> URI.decode |> String.to_atom}
+    case path |> String.split("/") do
+      [_, _ws, s, n] -> {String.to_atom(s), n |> URI.decode |> String.to_atom}
+      [_, _ws, s] -> {String.to_atom(s), nil}
+      _ -> [nil, nil]
+    end
   end
 end

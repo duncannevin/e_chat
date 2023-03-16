@@ -82,8 +82,8 @@ defmodule EChat.RoomServer do
     {:reply, {:ok, {room.name, updated_room.messages}}, new_state}
   end
 
-  def handle_cast({:register_socket, socket_pid}, %State{socket_pids: socket_pids} = state) do
-    IO.puts "Registering a socket #{inspect socket_pid}"
+  def handle_cast({:register_socket, socket_pid}, %State{socket_pids: socket_pids, room: room} = state) do
+    IO.puts "Registering a socket in room #{inspect room.name} #{inspect socket_pid}"
     new_state = %State{state | socket_pids: [socket_pid | socket_pids]}
     {:noreply, new_state}
   end
