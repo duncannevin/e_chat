@@ -3,8 +3,6 @@ defmodule EChat.RoomSupervisor do
 
   alias EChat.Struct.Room
 
-  import EChat.UserServer, only: [get_user: 1]
-
   def start_link(_args) do
     IO.puts "Starting the room supervisor..."
     DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
@@ -13,10 +11,7 @@ defmodule EChat.RoomSupervisor do
   # Client interface
 
   def start_work(%Room{} = room) do
-    case get_user(room.creator) do
-      {:error, :not_found} -> {:error, :creator_not_found}
-      _user -> supervise_room(room)
-    end
+    supervise_room(room)
   end
 
   def get_room_names do

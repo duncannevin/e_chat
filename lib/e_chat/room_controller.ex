@@ -1,11 +1,14 @@
 defmodule EChat.RoomController do
 
+  alias EChat.RoomServer
   alias EChat.Struct.Response
   alias EChat.Struct.Room
+  alias EChat.Struct.Message
   alias EChat.RoomsServer
 
   import EChat.RoomSupervisor, only: [start_work: 1]
   import EChat.RoomServer, only: [get_messages: 1]
+  import EChat.UserServer, only: [get_user: 1]
 
   @doc """
   For getting a room.
@@ -47,9 +50,12 @@ defmodule EChat.RoomController do
   For posting a room. Starts the room process.
   """
   def post_room(roomname, username, cowboy_request) do
-    %Room{name: roomname, creator: username}
-    |> start_work
-    |> post_room_response(cowboy_request)
+    case get_user(username) do
+      {:error, :not_found} -> {:error, :creator_not_found}
+      _user -> %Room{name: roomname, creator: username}
+        |> start_work
+        |> post_room_response(cowboy_request)
+    end
   end
 
   defp post_room_response({:ok, _}, cowboy_request) do
@@ -67,5 +73,30 @@ defmodule EChat.RoomController do
 
   defp post_room_response({:error, :complicated}, cowboy_request) do
     {:ok, Response.generate_json_response(%{msg: ""}, 400, cowboy_request), []}
+  end
+
+  @doc """
+  For posting a message to a room.
+  """
+  def post_message(roomname, username, message, cowboy_request) do
+    case get_user(username) do
+      {:error, :not_found} -> {:error, :creator_not_found}
+      _user ->
+        RoomServer.set_message(roomname |> URI.decode, %Message{username: username, message: message})
+        |> post_message_response(cowboy_request)
+    end
+  end
+
+  defp post_message_response({:ok, {roomname, _message}}, cowboy_request) do
+    RoomServer.update_sockets(roomname)
+    {:ok, Response.generate_json_response(%{msg: "Created"}, 201, cowboy_request), []}
+  end
+
+  defp post_message_response({:error, :not_found}, cowboy_request) do
+    {:ok, Response.generate_json_response(%{msg: "Not Found"}, 404, cowboy_request), []}
+  end
+
+  defp post_message_response({:error, :creator_not_found}, cowboy_request) do
+    {:ok, Response.generate_json_response(%{msg: "User not found"}, 404, cowboy_request), []}
   end
 end

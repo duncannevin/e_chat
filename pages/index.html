@@ -93,6 +93,8 @@
   <script src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/index.min.js"></script>
   <script>
     let user = null;
+    let room = null;
+    const initializeRoomSocket = roomSocketHandle();
 
     (function(document) {
       initializeUser();
@@ -102,6 +104,8 @@
       initializeRooms();
 
       startListening(document);
+
+      initializeRoomsSocket();
     })(document)
 
     function startListening(document) {
@@ -175,24 +179,29 @@
       }
     }
 
-    function handleMessage(evt) {
+    async function handleMessage(evt) {
       const message = evt.target.value;
 
-      if (!message.length) {
+      if (!message.length || !user || !room) {
         return;
       }
 
-      // TODO: Replace this with api call.
-      // This push message logic here will end up being handled directly with a websocket.
       const time = new Date().toDateString();
 
-      pushMessage({
-        username: user.username,
-        time: time,
-        message: message 
-      });
+      try {
+        await doPost({path: `/api/room/message/${room.roomname}`, body: {
+          username: user.username,
+          message: message
+        }});
 
-      evt.srcElement.value = '';
+        evt.srcElement.value = '';
+      } catch {}
+
+      // pushMessage({
+      //   username: user.username,
+      //   time: time,
+      //   message: message 
+      // });
     }
 
     async function doGet({path, headers = {}, loc = 'http://localhost:8080'}) {
@@ -213,13 +222,14 @@
     async function handleRoomSelected(selector) {
       try {
         const roomName = selector.innerText;
-        const room = await doGet({path: `/api/room/${roomName}`});
+        room = await doGet({path: `/api/room/${roomName}`});
 
         if (!room || !room.messages) {
           return;
         }
 
         initializeMessages(room.messages);
+        initializeRoomSocket(roomName);
       
         removeSelectedFromRoomSelectors();
         selector.classList.add('border-2');
@@ -246,6 +256,74 @@
       })      
     }
 
+    function roomSocketHandle() {
+      let socket;
+
+      return function(roomname) {
+        if (socket && socket.close) {
+          socket.close();
+        }
+
+        socket = new WebSocket(`ws://localhost:8080/ws/room/${roomname}`);
+
+        socket.onopen = function (evt) {
+          console.log(`[Room ${roomname} Socket][Opened] - ${evt.data || '{}'}`)
+        }
+
+        socket.onmessage = function(evt) {
+          const data = JSON.parse(evt.data);
+
+          switch(data.action) {
+            case 'room':
+              initializeMessages(data.data.messages);
+              break;
+            default: 
+              console.log(`[Room ${roomname} Socket][On Message][unknown] - ${evt.data}`);
+          }
+        }
+
+        socket.onclose = function(evt) {
+          console.log(`[Room ${roomname} Socket][Closed] - ${evt.data || '{}'}`);
+
+          initializeRoomsSocket();
+        }
+
+        socket.onerror = function(error) {
+          console.log(`[Rooms ${roomname} Socket][Error] - ${JSON.stringify(error || {})}`);
+        }
+      }
+    }
+
+    function initializeRoomsSocket() {
+      const socket = new WebSocket('ws://localhost:8080/ws/rooms');
+
+      socket.onopen = function (evt) {
+        console.log(`[Rooms Socket][Opened] - ${evt.data || '{}'}`)
+      }
+
+      socket.onmessage = function(evt) {
+        const data = JSON.parse(evt.data);
+
+        switch(data.action) {
+          case 'roomnames': 
+            initializeRooms(data.data);
+            break;
+          default: 
+            console.log(`[Rooms Socket][On Message][unknown] - ${evt.data}`);
+        }
+      }
+
+      socket.onclose = function(evt) {
+        console.log(`[Rooms Socket][Closed] - ${evt.data || '{}'}`);
+
+        initializeRoomsSocket();
+      }
+
+      socket.onerror = function(error) {
+        console.log(`[Rooms Socket][Error] - ${JSON.stringify(error || {})}`);
+      }
+    }
+
     async function handleRoom(evt) {
       const roomname = evt.target.value;
 
@@ -255,12 +333,6 @@
 
       try {
         const {msg} = await doPost({path: '/api/room', body: {roomname, username: user.username}})
-
-        if (msg.toLowerCase() === 'created') {
-          pushRoom({
-            name: roomname
-          });
-        }
 
         evt.srcElement.value = '';
         handleRoomSelectorListeners();
@@ -302,21 +374,29 @@
       messageInput.setAttribute('disabled', 'true');
     }
 
-    async function initializeRooms() {
-      const res = await fetch('http://localhost:8080/api/room');
-      const {rooms} = await res.json();
+    async function initializeRooms(rooms) {
+      try {
+        if (!rooms) {
+          const res = await fetch('http://localhost:8080/api/room');
+          const data = await res.json();
+          rooms = data.rooms;
+        }
 
-      for (const room of rooms) {
-        pushRoom({name: room});
-      }
+        clearRooms();
 
-      handleRoomSelectorListeners();
+        for (const room of rooms) {
+          pushRoom({name: room});
+        }
+
+        handleRoomSelectorListeners();
+      } catch {}
     }
 
     function initializeMessages(messages) {
       clearMessages();
 
-      for (const message of messages) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const message = messages[i];
         pushMessage(message);
       }
     }
@@ -338,9 +418,12 @@
       messageBoxContainer.scrollTop = messageBoxContainer.scrollHeight + 300;
     }
 
-    function pushRoom(room) {
-      // TODO: send this room to the server, let the server update the message via ws.
+    function clearRooms() {
+      const roomList = document.getElementById('room-list');
+      roomList.innerHTML = '';
+    }
 
+    function pushRoom(room) {
       const roomList = document.getElementById('room-list');
       const roomTemplate = createRoomTemplate(room);
 

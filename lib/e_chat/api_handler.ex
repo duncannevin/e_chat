@@ -3,7 +3,7 @@ defmodule EChat.ApiHandler do
   Handles are requests that begin with the path "/api"
   """
 
-  import EChat.RoomController, only: [get_room: 2, get_rooms: 1, post_room: 3]
+  import EChat.RoomController, only: [get_room: 2, get_rooms: 1, post_room: 3, post_message: 4]
   import EChat.UserController, only: [get_user: 2, create_user: 2, get_users: 1]
 
   alias EChat.Struct.Request
@@ -19,6 +19,13 @@ defmodule EChat.ApiHandler do
     roomname = body["roomname"]
     creator = body["username"]
     post_room(roomname, creator, cowboy_request)
+  end
+
+  defp handle(%Request{method: "POST", path: "/api/room/message/" <> roomname, body: body, cowboy: cowboy_request}) do
+    creator = body["username"]
+    message = body["message"]
+
+    post_message(roomname, creator, message, cowboy_request)
   end
 
   defp handle(%Request{method: "GET", path: "/api/room", cowboy: cowboy_request}) do
