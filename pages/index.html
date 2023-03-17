@@ -92,8 +92,7 @@
   </main>
   <script src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/index.min.js"></script>
   <script>
-    let user = null;
-    let room = null;
+    const state = initializeState();
     const initializeRoomSocket = roomSocketHandle();
 
     (function(document) {
@@ -109,6 +108,18 @@
 
       initializeHashListener();
     })(document)
+
+    function initializeState() {
+      let user = null;
+      let room = null;
+
+      return {
+        setState: (what, value) => {
+          this[what] = value
+        },
+        getState: (what) => this[what]
+      }
+    }
 
     function initializeHashListener() {
       window.addEventListener('hashchange', loadRoomFromHash);
@@ -153,9 +164,9 @@
         return;
       }
 
-      user = body.user;
+      state.setState('user', body.user);
       const userInput = document.getElementById('user-input');
-      userInput.value = user.username;
+      userInput.value = body.user.username;
 
       enableRoomInput();
       disableUserInput();
@@ -191,6 +202,8 @@
 
     async function handleMessage(evt) {
       const message = evt.target.value;
+      const user = state.getState('user');
+      const room = state.getState('room');
 
       if (!message.length || !user || !room) {
         return;
@@ -235,11 +248,13 @@
       cb = !cb ? () => activateRoom(roomname) : cb;
 
       try {
-        room = await doGet({path: `/api/room/${roomname}`});
+        const room = await doGet({path: `/api/room/${roomname}`});
 
         if (!room || !room.messages) {
           return;
         }
+
+        state.setState('room', room);
 
         initializeMessages(room.messages);
         initializeRoomSocket(roomname);
@@ -351,6 +366,7 @@
 
     async function handleRoom(evt) {
       const roomname = evt.target.value;
+      const user = state.getState('user');
 
       if (!roomname.length || !user.username) {
         return;
@@ -391,6 +407,7 @@
 
     function enableMessageInput() {
       const messageInput = document.getElementById('message-input');
+      const user = state.getState('user');
 
       if (room && user) {
         messageInput.removeAttribute('disabled');
