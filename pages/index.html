@@ -185,6 +185,7 @@
         localStorage.setItem('user', JSON.stringify(body.user));
         enableRoomInput();
         disableUserInput();
+        enableMessageInput();
       }
     }
 
@@ -254,6 +255,7 @@
       }
 
       deactivateRooms();
+
       enableMessageInput();
       
       selector.classList.add('border-2');
@@ -390,7 +392,11 @@
     function enableMessageInput() {
       const messageInput = document.getElementById('message-input');
 
-      messageInput.removeAttribute('disabled');
+      if (room && user) {
+        messageInput.removeAttribute('disabled');
+      } else {
+        messageInput.setAttribute('disabled', 'true');
+      }
     }
 
     function disableUserInput() {
