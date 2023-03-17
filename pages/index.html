@@ -106,7 +106,18 @@
       startListening(document);
 
       initializeRoomsSocket();
+
+      initializeHashListener();
     })(document)
+
+    function initializeHashListener() {
+      window.addEventListener('hashchange', loadRoomFromHash);
+    }
+
+    function loadRoomFromHash() {
+      const roomName = decodeURI(window.location.hash).replace('#', '');
+      fetchRoom(roomName);
+    }
 
     function startListening(document) {
       // Message input listener.
@@ -146,7 +157,6 @@
       const userInput = document.getElementById('user-input');
       userInput.value = user.username;
 
-      enableMessageInput();
       enableRoomInput();
       disableUserInput();
     }
@@ -173,7 +183,6 @@
       if (body.user) {
         user = body.user
         localStorage.setItem('user', JSON.stringify(body.user));
-        enableMessageInput();
         enableRoomInput();
         disableUserInput();
       }
@@ -196,12 +205,6 @@
 
         evt.srcElement.value = '';
       } catch {}
-
-      // pushMessage({
-      //   username: user.username,
-      //   time: time,
-      //   message: message 
-      // });
     }
 
     async function doGet({path, headers = {}, loc = 'http://localhost:8080'}) {
@@ -220,25 +223,45 @@
     }
 
     async function handleRoomSelected(selector) {
+      const roomName = selector.innerText;
+
+      location.hash = roomName;
+
+      fetchRoom(roomName);
+    }
+
+    async function fetchRoom(roomname, cb) {
+      cb = !cb ? () => activateRoom(roomname) : cb;
+
       try {
-        const roomName = selector.innerText;
-        room = await doGet({path: `/api/room/${roomName}`});
+        room = await doGet({path: `/api/room/${roomname}`});
 
         if (!room || !room.messages) {
           return;
         }
 
         initializeMessages(room.messages);
-        initializeRoomSocket(roomName);
-      
-        removeSelectedFromRoomSelectors();
-        selector.classList.add('border-2');
-        selector.classList.add('border-gray-800');
-        selector.classList.add('text-gray-800');
+        initializeRoomSocket(roomname);
+        cb();
       } catch {}
     }
 
-    function removeSelectedFromRoomSelectors() {
+    function activateRoom(roomName) {
+      const selector = document.getElementById(roomName);
+
+      if (!selector) {
+        return;
+      }
+
+      deactivateRooms();
+      enableMessageInput();
+      
+      selector.classList.add('border-2');
+      selector.classList.add('border-gray-800');
+      selector.classList.add('text-gray-800');
+    }
+
+    function deactivateRooms() {
       const roomSelectors = document.querySelectorAll('.room-selector');
 
       roomSelectors.forEach(function(selector) {
@@ -334,7 +357,9 @@
       try {
         const {msg} = await doPost({path: '/api/room', body: {roomname, username: user.username}})
 
+        window.location.hash = roomname;
         evt.srcElement.value = '';
+
         handleRoomSelectorListeners();
       } catch {}
     }
@@ -389,6 +414,7 @@
         }
 
         handleRoomSelectorListeners();
+        loadRoomFromHash();
       } catch {}
     }
 
@@ -438,6 +464,7 @@
         <li class="relative">
           <a
             class="room-selector flex h-12 cursor-pointer items-center truncate rounded-[5px] py-4 px-6 pl-2 text-[0.875rem] text-gray-600 transition duration-300 ease-linear hover:bg-slate-50 hover:text-inherit hover:outline-none focus:bg-slate-50 focus:text-inherit focus:outline-none active:bg-slate-50 active:text-inherit active:outline-none data-[te-sidenav-state-active]:text-inherit data-[te-sidenav-state-focus]:outline-none motion-reduce:transition-none dark:text-gray-300 dark:hover:bg-white/10 dark:focus:bg-white/10 dark:active:bg-white/10"
+            id="${room.name}"
             data-te-sidenav-link-ref>
             ${room.name}
           </a>
@@ -448,7 +475,7 @@
     function createMessageTemplate(message) {
       return `
         <div class="pt-2">
-          <div class="font-semibold">${message.username} <span class="font-light text-xs">${message.time}</span></div>  
+          <div class="font-semibold">${message.username} <span class="font-light text-xs"></span></div>  
           <p>${message.message}</p>
         </div>
       `;
