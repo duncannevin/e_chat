@@ -26,7 +26,8 @@ defmodule EChat.MixProject do
     [
       {:cowboy, github: "ninenines/cowboy", tag: "2.9.0"},
       {:poison, "~> 5.0"},
-      {:httpoison, "~> 1.8"}
+      {:httpoison, "~> 1.8"},
+      {:mock, "~> 0.3.0", only: :test}
     ]
   end
 end
