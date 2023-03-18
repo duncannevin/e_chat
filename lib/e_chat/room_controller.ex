@@ -54,8 +54,8 @@ defmodule EChat.RoomController do
       {:error, :not_found} -> {:error, :creator_not_found}
       _user -> %Room{name: roomname, creator: username}
         |> start_work
-        |> post_room_response(cowboy_request)
     end
+    |> post_room_response(cowboy_request)
   end
 
   defp post_room_response({:ok, _}, cowboy_request) do
@@ -71,7 +71,7 @@ defmodule EChat.RoomController do
     {:ok, Response.generate_json_response(%{msg: "User not found"}, 404, cowboy_request), []}
   end
 
-  defp post_room_response({:error, :complicated}, cowboy_request) do
+  defp post_room_response({:error, _}, cowboy_request) do
     {:ok, Response.generate_json_response(%{msg: ""}, 400, cowboy_request), []}
   end
 
@@ -80,11 +80,12 @@ defmodule EChat.RoomController do
   """
   def post_message(roomname, username, message, cowboy_request) do
     case get_user(username) do
-      {:error, :not_found} -> {:error, :creator_not_found}
+      {:error, :not_found} ->
+        {:error, :creator_not_found}
       _user ->
         RoomServer.set_message(roomname |> URI.decode, %Message{username: username, message: message})
-        |> post_message_response(cowboy_request)
     end
+    |> post_message_response(cowboy_request)
   end
 
   defp post_message_response({:ok, {roomname, _message}}, cowboy_request) do
