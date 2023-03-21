@@ -11,7 +11,9 @@ defmodule EChat.RoomSupervisor do
   # Client interface
 
   def start_work(%Room{} = room) do
-    supervise_room(room)
+    spec = {EChat.RoomServer, room}
+    DynamicSupervisor.start_child(__MODULE__, spec)
+    |> handle_supervision_response
   end
 
   def get_room_names do
@@ -21,17 +23,11 @@ defmodule EChat.RoomSupervisor do
     end)}
   end
 
-  defp supervise_room(%Room{} = room) do
-    spec = {EChat.RoomServer, room}
-    DynamicSupervisor.start_child(__MODULE__, spec)
-    |> handle_supervision_response
-  end
-
   # Server callbacks
 
   defp handle_supervision_response({:ok, pid}), do: {:ok, pid}
   defp handle_supervision_response({:error, {:already_started, _}}), do: {:error, :already_started}
-  defp handle_supervision_response({:error, error}), do: IO.inspect error; {:error, :complicated}
+  defp handle_supervision_response({:error, error}), do: {:error, error}
 
   def init(:ok) do
     DynamicSupervisor.init(strategy: :one_for_one)

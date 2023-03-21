@@ -6,11 +6,11 @@ defmodule UserApiIntegrationTest do
 
   describe "POST /api/user" do
     test "should create a user" do
-      username = "freddy"
+      username = "chestertester"
       {:ok, response} = do_post("/user", %{username: username})
 
       assert response.status_code == 201
-      assert response.body == "{\"user\":{\"username\":\"freddy\"},\"msg\":\"Created\"}"
+      assert response.body == "{\"user\":{\"username\":\"chestertester\"},\"msg\":\"Created\"}"
     end
 
     test "should respond with a duplicate name message" do
