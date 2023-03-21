@@ -12,7 +12,6 @@ defmodule EChat.RoomsServer do
     defstruct socket_pids: []
   end
 
-  @spec start_link(any) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(_arg) do
     IO.puts "Starting the rooms server..."
     GenServer.start_link(__MODULE__, %State{}, name: @name)
