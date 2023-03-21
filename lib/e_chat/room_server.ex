@@ -5,8 +5,8 @@ defmodule EChat.RoomServer do
   alias EChat.Struct.Room
   alias EChat.Struct.Message
   alias EChat.Struct.WsResponse
-
-  import Process, only: [whereis: 1]
+  alias EChat.Util
+  alias Elixir.Process
 
   defmodule State do
     defstruct room: %Room{}, socket_pids: []
@@ -18,56 +18,32 @@ defmodule EChat.RoomServer do
 
   # Client interface
 
-  def get_messages(roomname) when is_binary(roomname) do
-    roomname
-    |> String.to_atom
-    |> get_messages
-  end
-
   def get_messages(roomname) do
-    case whereis roomname do
-      nil -> {:error, :not_found}
-      pid -> GenServer.call(pid, :get_messages)
-    end
-  end
-
-  def set_message(roomname, %Message{} = message) when is_binary(roomname) do
     roomname
-    |> String.to_atom
-    |> set_message(message)
+    |> Util.to_atom
+    |> Util.whereis_then(
+      & GenServer.call(&1, :get_messages)
+    )
   end
 
   def set_message(roomname, %Message{} = message) do
-    case whereis roomname do
-      nil -> {:error, :not_found}
-      pid -> GenServer.call(pid, {:set_message, message})
-    end
-  end
-
-  def register_socket(roomname, socket_pid) when is_binary(roomname) do
     roomname
-    |> String.to_atom
-    |> register_socket(socket_pid)
+    |> Util.to_atom
+    |> Util.whereis_then(
+      & GenServer.call(&1, {:set_message, message})
+    )
   end
 
   def register_socket(roomname, socket_pid) do
-    case whereis roomname do
-      nil -> {:error, :not_found}
-      pid -> GenServer.cast(pid, {:register_socket, socket_pid})
-    end
-  end
-
-  def update_sockets(roomname) when is_binary(roomname) do
     roomname
-    |> String.to_atom
-    |> update_sockets
+    |> Util.to_atom
+    |> GenServer.cast({:register_socket, socket_pid})
   end
 
   def update_sockets(roomname) do
-    case whereis roomname do
-      nil -> {:error, :not_found}
-      pid -> GenServer.cast(pid, {:update_sockets})
-    end
+    roomname
+    |> Util.to_atom
+    |> GenServer.cast({:update_sockets})
   end
 
   # Server callbacks
