@@ -221,7 +221,7 @@
       } catch {}
     }
 
-    async function doGet({path, headers = {}, loc = 'http://localhost:8080'}) {
+    async function doGet({path, headers = {}, loc = ''}) {
       const response = await fetch(
         `${loc}${path}`, 
         {
@@ -304,7 +304,8 @@
           socket.close();
         }
 
-        socket = new WebSocket(`ws://localhost:8080/ws/room/${roomname}`);
+        const host = window.location.host;
+        socket = new WebSocket(`ws://${host}/ws/room/${roomname}`);
 
         socket.onopen = function (evt) {
           console.log(`[Room ${roomname} Socket][Opened] - ${evt.data || '{}'}`)
@@ -335,7 +336,8 @@
     }
 
     function initializeRoomsSocket() {
-      const socket = new WebSocket('ws://localhost:8080/ws/rooms');
+      const host = window.location.host;
+      const socket = new WebSocket(`ws://${host}/ws/rooms`);
 
       socket.onopen = function (evt) {
         console.log(`[Rooms Socket][Opened] - ${evt.data || '{}'}`)
@@ -382,7 +384,7 @@
       } catch {}
     }
 
-    async function doPost({path, body, headers = {}, loc = 'http://localhost:8080'}) {
+    async function doPost({path, body, headers = {}, loc = ''}) {
       const response =  await fetch(
         `${loc}${path}`, 
         {
@@ -408,6 +410,7 @@
     function enableMessageInput() {
       const messageInput = document.getElementById('message-input');
       const user = state.getState('user');
+      const room = state.getState('room');
 
       if (room && user) {
         messageInput.removeAttribute('disabled');
@@ -425,8 +428,7 @@
     async function initializeRooms(rooms) {
       try {
         if (!rooms) {
-          const res = await fetch('http://localhost:8080/api/room');
-          const data = await res.json();
+          const {data} = doGet({path: '/api/room'});
           rooms = data.rooms;
         }
 
